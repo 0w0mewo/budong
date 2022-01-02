@@ -83,7 +83,7 @@ func (ss *SetuService) Count() uint64 {
 func (ss *SetuService) fetchSetu(ctx context.Context, num int, r18 bool, keyword string) error {
 	setu, err := upstream.ReqSetuWithOption(ctx, http.DefaultClient, &upstream.Options{
 		Num:     num,
-		IsSetu:  r18,
+		IsR18:   r18,
 		Keyword: keyword,
 	})
 	if err != nil {

@@ -14,7 +14,6 @@ func init() {
 	redisLogger = logrus.NewEntry(logrus.StandardLogger()).WithField("cacher", "redis")
 }
 
-// implement repo of shetu doamin
 var _ KVStore = &RedisStore{}
 
 type RedisStore struct {

@@ -11,7 +11,7 @@ const url = "https://api.lolicon.app/setu/v2"
 // setu option
 type Options struct {
 	Num     int
-	IsSetu  bool
+	IsR18   bool
 	Keyword string
 }
 
@@ -23,7 +23,7 @@ func newSetuReq(ctx context.Context, opt *Options) (*http.Request, error) {
 	}
 
 	// parse r18 option
-	if opt.IsSetu {
+	if opt.IsR18 {
 		req.IsR18 = 1
 	} else {
 		req.IsR18 = 0

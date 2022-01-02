@@ -10,7 +10,7 @@ import (
 func ReqSetu(ctx context.Context, client *http.Client) (*SetuUpstreamResp, error) {
 	return ReqSetuWithOption(ctx, client, &Options{
 		Num:     1,
-		IsSetu:  true,
+		IsR18:   true,
 		Keyword: "",
 	})
 }
