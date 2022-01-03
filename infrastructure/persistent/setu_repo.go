@@ -2,9 +2,7 @@ package persistent
 
 import (
 	"context"
-	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/0w0mewo/budong/domain/shetu"
 	"github.com/0w0mewo/budong/infrastructure/cacher"
@@ -66,21 +64,6 @@ func (sr *SetuRepo) GetById(id int) ([]byte, error) {
 // fetch it from database if it's not exist in the redis cache.
 func (sr *SetuRepo) GetByTitle(title string) ([]byte, error) {
 	return sr.GetBy(title, title, sr.selectSetuByTitle)
-}
-
-// image extension
-func (sr *SetuRepo) GetImgTypeById(id int) (string, error) {
-	cond := &shetu.Setu{Id: id}
-	table := sr.db.Model(cond)
-	res := table.First(cond)
-
-	if res.RowsAffected == 0 {
-		return "", ErrNotExistInDB
-	}
-
-	_type := strings.TrimPrefix(filepath.Ext(cond.Url), ".")
-
-	return _type, nil
 }
 
 // add setu
@@ -205,4 +188,11 @@ func (sr *SetuRepo) existDB(id int) bool {
 	res := table.First(cond)
 
 	return res.RowsAffected != 0
+}
+
+func (sr *SetuRepo) Random() (int, error) {
+	res := &shetu.Setu{}
+	err := sr.db.Model(res).Select("id").Order("random()").First(res).Error
+
+	return res.Id, err
 }

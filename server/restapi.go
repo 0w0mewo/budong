@@ -2,11 +2,11 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/0w0mewo/budong/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -67,11 +67,7 @@ func (r *ApiServer) givemesetu(c *gin.Context) {
 		return
 	}
 
-	imgType, err := r.service.GetImageType(id)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, &Resp{ErrMsg: err.Error()})
-		return
-	}
+	imgType := utils.ImageBytesFmt(se)
 
 	c.Data(http.StatusOK, "image/"+imgType, se)
 }
@@ -123,7 +119,19 @@ func (r *ApiServer) inventory(c *gin.Context) {
 }
 
 func (r *ApiServer) hello(c *gin.Context) {
-	fmt.Fprintf(c.Writer, "ok\n\r")
+	img, err := r.service.RandomSetu()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, &Resp{ErrMsg: err.Error()})
+		return
+	}
+
+	imgType := utils.ImageBytesFmt(img)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, &Resp{ErrMsg: err.Error()})
+		return
+	}
+
+	c.Data(http.StatusOK, "image/"+imgType, img)
 }
 
 func (r *ApiServer) fetchsetu(c *gin.Context) {

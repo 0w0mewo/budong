@@ -3,7 +3,6 @@ package shetu
 import (
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"strconv"
 
 	"github.com/0w0mewo/budong/utils"
@@ -19,13 +18,11 @@ type Setu struct {
 	Data  []byte
 }
 type SetuInfo struct {
-	Id    int    `json:"pid"`
-	Title string `json:"title"`
-	// Author string            `json:"author"`
+	Id    int               `json:"pid"`
+	Title string            `json:"title"`
 	Uid   int               `json:"uid"`
 	Url   map[string]string `json:"urls"`
 	IsR18 bool              `json:"r18"`
-	Ext   string            `json:"ext"`
 }
 
 func (s *SetuInfo) String() string {
@@ -81,7 +78,6 @@ func SetuToSetuInfo(setu *Setu) *SetuInfo {
 		Uid:   setu.Uid,
 		Url:   make(map[string]string),
 		IsR18: setu.IsR18,
-		Ext:   filepath.Ext(setu.Url),
 	}
 
 	res.Url["original"] = setu.Url

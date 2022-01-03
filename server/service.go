@@ -17,7 +17,7 @@ type Service interface {
 	RequestSetu(num int, isR18 bool) error
 	GetSetuFromDB(id int) ([]byte, error)
 	GetInventory(page, pageLimit uint64) ([]*shetu.SetuInfo, error)
-	GetImageType(id int) (string, error)
+	RandomSetu() ([]byte, error)
 	Count() uint64
 }
 
@@ -40,11 +40,23 @@ func NewSetuService(ctx context.Context, dsn string) *SetuService {
 	}
 }
 
+// fetch setu from upstream
 func (ss *SetuService) RequestSetu(num int, isR18 bool) error {
 	return ss.fetchSetu(ss.ctx, num, isR18, "")
 
 }
 
+// randomly select setu
+func (ss *SetuService) RandomSetu() ([]byte, error) {
+	id, err := ss.store.Random()
+	if err != nil {
+		return nil, err
+	}
+
+	return ss.store.GetById(id)
+}
+
+// get setu image bytes by id
 func (ss *SetuService) GetSetuFromDB(id int) ([]byte, error) {
 	b, err := ss.store.GetById(id)
 	if err != nil {
@@ -55,16 +67,7 @@ func (ss *SetuService) GetSetuFromDB(id int) ([]byte, error) {
 	return b, err
 }
 
-func (ss *SetuService) GetImageType(id int) (string, error) {
-	_type, err := ss.store.GetImgTypeById(id)
-	if err != nil {
-		ss.logger.Errorln(err)
-		return "", err
-	}
-
-	return _type, err
-}
-
+// setu inventory info
 func (ss *SetuService) GetInventory(page, pageLimit uint64) ([]*shetu.SetuInfo, error) {
 	setus, err := ss.store.PaginatedInventory(page, pageLimit)
 	if err != nil {
@@ -75,6 +78,7 @@ func (ss *SetuService) GetInventory(page, pageLimit uint64) ([]*shetu.SetuInfo, 
 	return setus, nil
 }
 
+// number of setu in inventory
 func (ss *SetuService) Count() uint64 {
 	return uint64(ss.store.Count())
 }
