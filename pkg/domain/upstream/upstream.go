@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/0w0mewo/budong/domain/shetu"
+	"github.com/0w0mewo/budong/pkg/domain/shetu"
 )
 
 // setu api request

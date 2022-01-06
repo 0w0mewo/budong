@@ -1,14 +1,15 @@
-package server
+package service
 
 import (
 	"context"
 	"net/http"
 	"sync"
+	"time"
 
-	"github.com/0w0mewo/budong/domain/shetu"
-	"github.com/0w0mewo/budong/domain/upstream"
-	"github.com/0w0mewo/budong/infrastructure/cacher"
-	"github.com/0w0mewo/budong/infrastructure/persistent"
+	"github.com/0w0mewo/budong/internal/infrastructure/cacher"
+	"github.com/0w0mewo/budong/internal/infrastructure/persistent"
+	"github.com/0w0mewo/budong/pkg/domain/shetu"
+	"github.com/0w0mewo/budong/pkg/domain/upstream"
 
 	"github.com/sirupsen/logrus"
 )
@@ -26,14 +27,13 @@ var _ Service = &SetuService{}
 
 type SetuService struct {
 	wg     *sync.WaitGroup
-	ctx    context.Context
 	store  shetu.Repo // abstract storage
 	logger *logrus.Entry
 }
 
-func NewSetuService(ctx context.Context, dsn string) *SetuService {
-	db := persistent.NewSetuRepo(ctx, cacher.REDIS, dsn)
-	return &SetuService{ctx: ctx,
+func NewSetuService(dsn string) *SetuService {
+	db := persistent.NewSetuRepo(cacher.REDIS, dsn)
+	return &SetuService{
 		store:  db,
 		wg:     &sync.WaitGroup{},
 		logger: logrus.StandardLogger().WithField("module", "setu server"),
@@ -42,7 +42,7 @@ func NewSetuService(ctx context.Context, dsn string) *SetuService {
 
 // fetch setu from upstream
 func (ss *SetuService) RequestSetu(num int, isR18 bool) error {
-	return ss.fetchSetu(ss.ctx, num, isR18, "")
+	return ss.fetchSetu(num, isR18, "")
 
 }
 
@@ -83,8 +83,15 @@ func (ss *SetuService) Count() uint64 {
 	return uint64(ss.store.Count())
 }
 
+func (ss *SetuService) Shutdown() {
+	// ss.
+}
+
 // request setu, fetch and store them into repo
-func (ss *SetuService) fetchSetu(ctx context.Context, num int, r18 bool, keyword string) error {
+func (ss *SetuService) fetchSetu(num int, r18 bool, keyword string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
 	setu, err := upstream.ReqSetuWithOption(ctx, http.DefaultClient, &upstream.Options{
 		Num:     num,
 		IsR18:   r18,

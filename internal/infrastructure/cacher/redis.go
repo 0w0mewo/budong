@@ -17,11 +17,14 @@ func init() {
 var _ KVStore = &RedisStore{}
 
 type RedisStore struct {
-	ctx context.Context
-	rdb *redis.Client
+	rdb     *redis.Client
+	timeout time.Duration
 }
 
-func newRedisCache(ctx context.Context, addr string) *RedisStore {
+func newRedisCache(addr string, timeout time.Duration) *RedisStore {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
 	// TODO: use proper config
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,
@@ -31,30 +34,39 @@ func newRedisCache(ctx context.Context, addr string) *RedisStore {
 	}
 
 	return &RedisStore{
-		ctx: ctx,
-		rdb: client,
+		rdb:     client,
+		timeout: timeout,
 	}
 }
 
 func (rc *RedisStore) Add(key string, value []byte) error {
-	return rc.rdb.Set(rc.ctx, key, value, time.Hour).Err()
+	ctx, cancel := context.WithTimeout(context.Background(), rc.timeout)
+	defer cancel()
+
+	return rc.rdb.Set(ctx, key, value, time.Hour).Err()
 }
 
 func (rc *RedisStore) Get(key string, missDo func(key string) ([]byte, error)) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), rc.timeout)
+	defer cancel()
+
 	if rc.Exist(key) {
 		redisLogger.Infof("cache hit: %s", key)
-		return rc.rdb.Get(rc.ctx, key).Bytes()
+		return rc.rdb.Get(ctx, key).Bytes()
 	}
 
 	b, err := missDo(key)
 	if err != nil {
 		return nil, err
 	}
-	rc.rdb.Set(rc.ctx, key, b, time.Hour)
+	rc.rdb.Set(ctx, key, b, time.Hour)
 
 	return b, nil
 }
 
 func (rc *RedisStore) Exist(key string) bool {
-	return rc.rdb.Exists(rc.ctx, key).Val() != 0
+	ctx, cancel := context.WithTimeout(context.Background(), rc.timeout)
+	defer cancel()
+
+	return rc.rdb.Exists(ctx, key).Val() != 0
 }

@@ -1,8 +1,6 @@
 package cacher
 
-import (
-	"context"
-)
+import "time"
 
 type StoreType int
 
@@ -19,6 +17,6 @@ type KVStore interface {
 }
 
 // redis based presistence storage
-func NewRedisCache(ctx context.Context, addr string) KVStore {
-	return newRedisCache(ctx, addr)
+func NewRedisCache(addr string) KVStore {
+	return newRedisCache(addr, 3*time.Second)
 }

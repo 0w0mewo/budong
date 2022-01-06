@@ -1,12 +1,11 @@
 package persistent
 
 import (
-	"context"
 	"strconv"
 
 	"github.com/0w0mewo/budong/config"
-	"github.com/0w0mewo/budong/domain/shetu"
-	"github.com/0w0mewo/budong/infrastructure/cacher"
+	"github.com/0w0mewo/budong/internal/infrastructure/cacher"
+	"github.com/0w0mewo/budong/pkg/domain/shetu"
 
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/sqlite"
@@ -24,16 +23,16 @@ type SetuRepo struct {
 	logger *logrus.Entry
 }
 
-func NewSetuRepo(ctx context.Context, t cacher.StoreType, dsn string) *SetuRepo {
+func NewSetuRepo(t cacher.StoreType, dsn string) *SetuRepo {
 	var cache cacher.KVStore
 
 	switch t {
 	case cacher.REDIS:
-		cache = cacher.NewRedisCache(ctx, config.GlobalConfig.RedisAddr())
+		cache = cacher.NewRedisCache(config.GlobalConfig.RedisAddr())
 	case cacher.MEM:
 		cache = cacher.NewInMemStore()
 	default:
-		cache = cacher.NewRedisCache(ctx, config.GlobalConfig.RedisAddr())
+		cache = cacher.NewRedisCache(config.GlobalConfig.RedisAddr())
 	}
 
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
@@ -43,8 +42,6 @@ func NewSetuRepo(ctx context.Context, t cacher.StoreType, dsn string) *SetuRepo 
 	if err != nil {
 		panic(err)
 	}
-
-	db = db.WithContext(ctx)
 
 	db.AutoMigrate(&shetu.Setu{})
 
