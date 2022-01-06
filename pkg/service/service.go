@@ -37,7 +37,7 @@ func NewSetuService(dsn string) *SetuService {
 	return &SetuService{
 		store:  db,
 		wg:     &sync.WaitGroup{},
-		logger: logrus.StandardLogger().WithField("module", "setu server"),
+		logger: logrus.StandardLogger().WithField("module", "setu service"),
 	}
 }
 

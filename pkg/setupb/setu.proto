@@ -1,6 +1,6 @@
 syntax = "proto3";
 package setupb;
-option go_package = "github.com/0w0mewo/budong/server/grpcserver/setu";
+option go_package = "github.com/0w0mewo/budong/pkg/setupb";
 
 service SetuService {
     rpc GetInventory (InventoryReq) returns (InventoryResp);
