@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/0w0mewo/budong/config"
 	"github.com/0w0mewo/budong/domain/shetu"
 	"github.com/0w0mewo/budong/infrastructure/cacher"
 
@@ -28,11 +29,11 @@ func NewSetuRepo(ctx context.Context, t cacher.StoreType, dsn string) *SetuRepo 
 
 	switch t {
 	case cacher.REDIS:
-		cache = cacher.NewRedisRepo(ctx)
+		cache = cacher.NewRedisCache(ctx, config.GlobalConfig.RedisAddr())
 	case cacher.MEM:
 		cache = cacher.NewInMemStore()
 	default:
-		cache = cacher.NewRedisRepo(ctx)
+		cache = cacher.NewRedisCache(ctx, config.GlobalConfig.RedisAddr())
 	}
 
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{

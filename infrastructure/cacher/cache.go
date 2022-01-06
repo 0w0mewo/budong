@@ -19,6 +19,6 @@ type KVStore interface {
 }
 
 // redis based presistence storage
-func NewRedisRepo(ctx context.Context) KVStore {
-	return newRedisCache(ctx)
+func NewRedisCache(ctx context.Context, addr string) KVStore {
+	return newRedisCache(ctx, addr)
 }

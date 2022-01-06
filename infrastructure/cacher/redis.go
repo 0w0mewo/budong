@@ -21,10 +21,10 @@ type RedisStore struct {
 	rdb *redis.Client
 }
 
-func newRedisCache(ctx context.Context) *RedisStore {
+func newRedisCache(ctx context.Context, addr string) *RedisStore {
 	// TODO: use proper config
 	client := redis.NewClient(&redis.Options{
-		Addr:     "127.0.0.1:6379",
+		Addr:     addr,
 		Password: "", DB: 0})
 	if err := client.Ping(ctx).Err(); err != nil {
 		redisLogger.Panic(err)
