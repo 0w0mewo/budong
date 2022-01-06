@@ -56,3 +56,7 @@ func (im *InMemStore) Exist(key string) bool {
 
 	return exist
 }
+
+func (im *InMemStore) Close() error {
+	return nil
+}

@@ -64,6 +64,7 @@ func (sgs *SetuGrpcServer) Run() {
 
 // shutdown server
 func (sgs *SetuGrpcServer) Shutdown() {
+	sgs.serve.Shutdown()
 	sgs.server.GracefulStop()
 	sgs.running = false
 

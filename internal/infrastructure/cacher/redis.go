@@ -70,3 +70,7 @@ func (rc *RedisStore) Exist(key string) bool {
 
 	return rc.rdb.Exists(ctx, key).Val() != 0
 }
+
+func (rc *RedisStore) Close() error {
+	return rc.rdb.Close()
+}

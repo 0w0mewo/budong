@@ -9,4 +9,5 @@ type Repo interface {
 	PaginatedInventory(page uint64, pageLimit uint64) ([]*SetuInfo, error)
 	Count() uint64
 	Random() (int, error)
+	Close() error
 }

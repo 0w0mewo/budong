@@ -20,6 +20,7 @@ type Service interface {
 	GetInventory(page, pageLimit uint64) ([]*shetu.SetuInfo, error)
 	RandomSetu() ([]byte, error)
 	Count() uint64
+	Shutdown()
 }
 
 // implement service
@@ -84,7 +85,10 @@ func (ss *SetuService) Count() uint64 {
 }
 
 func (ss *SetuService) Shutdown() {
-	// ss.
+	ss.store.Close()
+	ss.wg.Wait()
+
+	ss.logger.Infoln("common service shutdown")
 }
 
 // request setu, fetch and store them into repo

@@ -194,3 +194,12 @@ func (sr *SetuRepo) Random() (int, error) {
 
 	return res.Id, err
 }
+
+func (sr *SetuRepo) Close() error {
+	err := sr.db.Commit().Error
+	if err != nil {
+		return err
+	}
+
+	return sr.cache.Close()
+}

@@ -14,6 +14,7 @@ type KVStore interface {
 	Add(key string, value []byte) error
 	Get(key string, missDo func(key string) ([]byte, error)) ([]byte, error)
 	Exist(key string) bool
+	Close() error
 }
 
 // redis based presistence storage
