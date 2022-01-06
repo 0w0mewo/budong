@@ -1,5 +1,5 @@
 syntax = "proto3";
-package setupb;
+package setu;
 option go_package = "github.com/0w0mewo/budong/pkg/setupb";
 
 service SetuService {

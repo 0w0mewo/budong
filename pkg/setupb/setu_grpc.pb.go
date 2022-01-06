@@ -133,5 +133,5 @@ var SetuService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "server/grpc/setu/setu.proto",
+	Metadata: "pkg/setupb/setu.proto",
 }
