@@ -1,7 +1,9 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -16,7 +18,7 @@ import (
 
 type Service interface {
 	RequestSetu(num int, isR18 bool) error
-	GetSetuFromDB(id int) ([]byte, error)
+	GetSetuFromDB(id int) (io.Reader, error)
 	GetInventory(page, pageLimit uint64) ([]*shetu.SetuInfo, error)
 	RandomSetu() ([]byte, error)
 	Count() uint64
@@ -70,14 +72,14 @@ func (ss *SetuService) RandomSetu() ([]byte, error) {
 }
 
 // get setu image bytes by id
-func (ss *SetuService) GetSetuFromDB(id int) ([]byte, error) {
+func (ss *SetuService) GetSetuFromDB(id int) (io.Reader, error) {
 	b, err := ss.store.GetById(id)
 	if err != nil {
 		ss.logger.Errorln(err)
 		return nil, err
 	}
 
-	return b, err
+	return bytes.NewReader(b), err
 }
 
 // setu inventory info
@@ -122,7 +124,7 @@ func (ss *SetuService) fetcher() {
 
 	for opt := range ss.setureqs {
 		if opt != nil {
-			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 
 			setu, err := upstream.ReqSetuWithOption(ctx, http.DefaultClient, opt)
 			if err != nil {

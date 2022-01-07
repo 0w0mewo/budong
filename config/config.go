@@ -6,7 +6,7 @@ func init() {
 	GlobalConfig = new(config)
 	GlobalConfig.redisAddr = "127.0.0.1:6379"
 	GlobalConfig.db = "/tmp/test.db"
-	GlobalConfig.serverAddr = ":9999"
+	GlobalConfig.serverAddr = "127.0.0.1:9999"
 }
 
 type config struct {

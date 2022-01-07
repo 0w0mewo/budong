@@ -19,7 +19,8 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type SetuServiceClient interface {
 	GetInventory(ctx context.Context, in *InventoryReq, opts ...grpc.CallOption) (*InventoryResp, error)
-	Fetch(ctx context.Context, in *FetchReq, opts ...grpc.CallOption) (*ErrResp, error)
+	Fetch(ctx context.Context, in *FetchReq, opts ...grpc.CallOption) (*FetchResp, error)
+	GetSetuById(ctx context.Context, in *SetuReq, opts ...grpc.CallOption) (SetuService_GetSetuByIdClient, error)
 }
 
 type setuServiceClient struct {
@@ -39,8 +40,8 @@ func (c *setuServiceClient) GetInventory(ctx context.Context, in *InventoryReq, 
 	return out, nil
 }
 
-func (c *setuServiceClient) Fetch(ctx context.Context, in *FetchReq, opts ...grpc.CallOption) (*ErrResp, error) {
-	out := new(ErrResp)
+func (c *setuServiceClient) Fetch(ctx context.Context, in *FetchReq, opts ...grpc.CallOption) (*FetchResp, error) {
+	out := new(FetchResp)
 	err := c.cc.Invoke(ctx, "/setu.SetuService/Fetch", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -48,12 +49,45 @@ func (c *setuServiceClient) Fetch(ctx context.Context, in *FetchReq, opts ...grp
 	return out, nil
 }
 
+func (c *setuServiceClient) GetSetuById(ctx context.Context, in *SetuReq, opts ...grpc.CallOption) (SetuService_GetSetuByIdClient, error) {
+	stream, err := c.cc.NewStream(ctx, &SetuService_ServiceDesc.Streams[0], "/setu.SetuService/GetSetuById", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &setuServiceGetSetuByIdClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type SetuService_GetSetuByIdClient interface {
+	Recv() (*SetuResp, error)
+	grpc.ClientStream
+}
+
+type setuServiceGetSetuByIdClient struct {
+	grpc.ClientStream
+}
+
+func (x *setuServiceGetSetuByIdClient) Recv() (*SetuResp, error) {
+	m := new(SetuResp)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // SetuServiceServer is the server API for SetuService service.
 // All implementations must embed UnimplementedSetuServiceServer
 // for forward compatibility
 type SetuServiceServer interface {
 	GetInventory(context.Context, *InventoryReq) (*InventoryResp, error)
-	Fetch(context.Context, *FetchReq) (*ErrResp, error)
+	Fetch(context.Context, *FetchReq) (*FetchResp, error)
+	GetSetuById(*SetuReq, SetuService_GetSetuByIdServer) error
 	mustEmbedUnimplementedSetuServiceServer()
 }
 
@@ -64,8 +98,11 @@ type UnimplementedSetuServiceServer struct {
 func (UnimplementedSetuServiceServer) GetInventory(context.Context, *InventoryReq) (*InventoryResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetInventory not implemented")
 }
-func (UnimplementedSetuServiceServer) Fetch(context.Context, *FetchReq) (*ErrResp, error) {
+func (UnimplementedSetuServiceServer) Fetch(context.Context, *FetchReq) (*FetchResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Fetch not implemented")
+}
+func (UnimplementedSetuServiceServer) GetSetuById(*SetuReq, SetuService_GetSetuByIdServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetSetuById not implemented")
 }
 func (UnimplementedSetuServiceServer) mustEmbedUnimplementedSetuServiceServer() {}
 
@@ -116,6 +153,27 @@ func _SetuService_Fetch_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SetuService_GetSetuById_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SetuReq)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(SetuServiceServer).GetSetuById(m, &setuServiceGetSetuByIdServer{stream})
+}
+
+type SetuService_GetSetuByIdServer interface {
+	Send(*SetuResp) error
+	grpc.ServerStream
+}
+
+type setuServiceGetSetuByIdServer struct {
+	grpc.ServerStream
+}
+
+func (x *setuServiceGetSetuByIdServer) Send(m *SetuResp) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // SetuService_ServiceDesc is the grpc.ServiceDesc for SetuService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -132,6 +190,12 @@ var SetuService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _SetuService_Fetch_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "GetSetuById",
+			Handler:       _SetuService_GetSetuById_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "pkg/setupb/setu.proto",
 }

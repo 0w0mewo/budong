@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"io"
 	"net"
 
 	"github.com/0w0mewo/budong/pkg/domain/shetu"
@@ -19,9 +20,11 @@ type SetuGrpcServer struct {
 	serve service.Service
 	setupb.UnimplementedSetuServiceServer
 	listener net.Listener
-	logger   *logrus.Entry
 	server   *grpc.Server
-	running  bool
+
+	logger    *logrus.Entry
+	running   bool
+	chunkSize int
 }
 
 func NewSetuGrpcServer(addr, dsn string) *SetuGrpcServer {
@@ -35,10 +38,11 @@ func NewSetuGrpcServer(addr, dsn string) *SetuGrpcServer {
 	gserver := grpc.NewServer()
 
 	ret := &SetuGrpcServer{
-		logger:   logger,
-		serve:    service.NewSetuService(dsn),
-		listener: listener,
-		server:   gserver,
+		logger:    logger,
+		serve:     service.NewSetuService(dsn),
+		listener:  listener,
+		server:    gserver,
+		chunkSize: 32 * 1024, // 32KiB
 	}
 
 	setupb.RegisterSetuServiceServer(gserver, ret)
@@ -73,16 +77,16 @@ func (sgs *SetuGrpcServer) Shutdown() {
 
 // fetch setu and store to DB
 func (sgs *SetuGrpcServer) Fetch(ctx context.Context,
-	req *setupb.FetchReq) (*setupb.ErrResp, error) {
+	req *setupb.FetchReq) (*setupb.FetchResp, error) {
 
 	err := sgs.serve.RequestSetu(int(req.Amount), false) // 不可以色色
 	if err != nil {
 		emsg := err.Error()
-		return &setupb.ErrResp{ErrMsg: emsg},
+		return &setupb.FetchResp{ErrMsg: emsg},
 			status.Error(codes.Internal, emsg)
 	}
 
-	return &setupb.ErrResp{ErrMsg: "ok"}, nil
+	return &setupb.FetchResp{ErrMsg: "ok"}, nil
 }
 
 // get setu inventory
@@ -96,7 +100,7 @@ func (sgs *SetuGrpcServer) GetInventory(ctx context.Context,
 	if size > 50 || size < 1 {
 		emsg := ErrPageSize.Error()
 		return &setupb.InventoryResp{
-			Err: &setupb.ErrResp{ErrMsg: emsg},
+			Err: &setupb.FetchResp{ErrMsg: emsg},
 		}, status.Error(codes.InvalidArgument, emsg)
 	}
 
@@ -104,7 +108,7 @@ func (sgs *SetuGrpcServer) GetInventory(ctx context.Context,
 	if page < 1 || page > sgs.serve.Count()/size+1 {
 		emsg := ErrPageRange.Error()
 		return &setupb.InventoryResp{
-			Err: &setupb.ErrResp{ErrMsg: emsg},
+			Err: &setupb.FetchResp{ErrMsg: emsg},
 		}, status.Error(codes.InvalidArgument, emsg)
 	}
 
@@ -120,10 +124,19 @@ func (sgs *SetuGrpcServer) GetInventory(ctx context.Context,
 
 }
 
+func (sgs *SetuGrpcServer) GetSetuById(req *setupb.SetuReq, stream setupb.SetuService_GetSetuByIdServer) error {
+	img, err := sgs.serve.GetSetuFromDB(int(req.Id))
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	return writeToStream(img, stream, sgs.chunkSize)
+}
+
 // convert SetuInfo slice to gRPC InventoryResp
 func setuInfosToInventory(setus []*shetu.SetuInfo) *setupb.InventoryResp {
 	ret := &setupb.InventoryResp{
-		Err:  &setupb.ErrResp{ErrMsg: "ok"},
+		Err:  &setupb.FetchResp{ErrMsg: "ok"},
 		Info: make([]*setupb.InventoryResp_SetuInfo, 0),
 	}
 
@@ -139,4 +152,24 @@ func setuInfosToInventory(setus []*shetu.SetuInfo) *setupb.InventoryResp {
 
 	}
 	return ret
+}
+
+// write to stream service until EOF
+func writeToStream(src io.Reader, dst setupb.SetuService_GetSetuByIdServer, chunkSize int) error {
+	buf := make([]byte, chunkSize)
+	for {
+		n, err := src.Read(buf)
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+
+			return err
+		}
+
+		dst.Send(&setupb.SetuResp{
+			Chunk: buf[:n],
+		})
+	}
+
 }

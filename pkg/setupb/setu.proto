@@ -3,8 +3,17 @@ package setu;
 option go_package = "github.com/0w0mewo/budong/pkg/setupb";
 
 service SetuService {
-    rpc GetInventory (InventoryReq) returns (InventoryResp);
-    rpc Fetch(FetchReq) returns (ErrResp); 
+    rpc GetInventory (InventoryReq) returns (InventoryResp) {};
+    rpc Fetch(FetchReq) returns (FetchResp) {}; 
+    rpc GetSetuById(SetuReq) returns (stream SetuResp) {};
+}
+
+message SetuReq {
+    int64 id = 1;
+}
+
+message SetuResp {
+    bytes chunk = 2;
 }
 
 message FetchReq {
@@ -16,12 +25,12 @@ message InventoryReq {
     uint64 pageLimit = 2; 
 }
 
-message ErrResp {
+message FetchResp {
     string errMsg = 1;
 }
 
 message InventoryResp {
-    ErrResp err = 1;
+    FetchResp err = 1;
     message SetuInfo {
         int64 id = 1;
         string title = 2;
