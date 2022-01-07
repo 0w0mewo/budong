@@ -18,6 +18,7 @@ message SetuResp {
 
 message FetchReq {
     uint64 amount = 1;
+    bool r18 = 2;
 }
 
 message InventoryReq {

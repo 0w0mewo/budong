@@ -79,7 +79,7 @@ func (sgs *SetuGrpcServer) Shutdown() {
 func (sgs *SetuGrpcServer) Fetch(ctx context.Context,
 	req *setupb.FetchReq) (*setupb.FetchResp, error) {
 
-	err := sgs.serve.RequestSetu(int(req.Amount), false) // 不可以色色
+	err := sgs.serve.RequestSetu(int(req.Amount), req.R18)
 	if err != nil {
 		emsg := err.Error()
 		return &setupb.FetchResp{ErrMsg: emsg},
