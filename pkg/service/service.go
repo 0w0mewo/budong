@@ -27,18 +27,30 @@ type Service interface {
 var _ Service = &SetuService{}
 
 type SetuService struct {
-	wg     *sync.WaitGroup
-	store  shetu.Repo // abstract storage
-	logger *logrus.Entry
+	wg       *sync.WaitGroup
+	store    shetu.Repo // abstract storage
+	logger   *logrus.Entry
+	setureqs chan *upstream.Options
 }
 
 func NewSetuService(dsn string) *SetuService {
 	db := persistent.NewSetuRepo(cacher.REDIS, dsn)
-	return &SetuService{
-		store:  db,
-		wg:     &sync.WaitGroup{},
-		logger: logrus.StandardLogger().WithField("module", "setu service"),
+
+	ss := &SetuService{
+		store:    db,
+		wg:       &sync.WaitGroup{},
+		logger:   logrus.StandardLogger().WithField("module", "setu service"),
+		setureqs: make(chan *upstream.Options, 1000),
 	}
+
+	ss.wg.Add(1)
+	go func() {
+		defer ss.wg.Done()
+
+		ss.fetcher()
+	}()
+
+	return ss
 }
 
 // fetch setu from upstream
@@ -86,46 +98,59 @@ func (ss *SetuService) Count() uint64 {
 
 func (ss *SetuService) Shutdown() {
 	ss.store.Close()
+	close(ss.setureqs)
 	ss.wg.Wait()
 
 	ss.logger.Infoln("common service shutdown")
 }
 
-// request setu, fetch and store them into repo
-func (ss *SetuService) fetchSetu(num int, r18 bool, keyword string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
+func (ss *SetuService) fetcher() {
+	var wg sync.WaitGroup
 
-	setu, err := upstream.ReqSetuWithOption(ctx, http.DefaultClient, &upstream.Options{
-		Num:     num,
-		IsR18:   r18,
-		Keyword: keyword,
-	})
-	if err != nil {
-		ss.logger.Errorln(err)
-		return err
-	}
+	addFromSetuInfo := func(s *shetu.SetuInfo) {
+		defer wg.Done()
 
-	ss.logger.Info("requested setu")
-
-	for _, s := range setu.Data {
-		ss.wg.Add(1)
-		go func(s *shetu.SetuInfo) {
-			defer ss.wg.Done()
-
-			err := ss.store.AddSetu(s)
-			if err != nil {
-				if err == persistent.ErrCacheHit || err == persistent.ErrExistInDB {
-					return
-				}
-				ss.logger.Errorln("add setu:", err)
+		err := ss.store.AddSetu(s)
+		if err != nil {
+			if err == persistent.ErrCacheHit || err == persistent.ErrExistInDB {
 				return
 			}
-		}(s)
+			ss.logger.Errorln("add setu:", err)
+			return
+		}
+	}
+
+	for opt := range ss.setureqs {
+		if opt != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+
+			setu, err := upstream.ReqSetuWithOption(ctx, http.DefaultClient, opt)
+			if err != nil {
+				ss.logger.Errorln(err)
+				cancel()
+				continue
+			}
+
+			ss.logger.Info("requested setu")
+
+			for _, s := range setu.Data {
+				wg.Add(1)
+				go addFromSetuInfo(s)
+
+			}
+
+			cancel()
+		}
 
 	}
 
-	ss.wg.Wait()
+	wg.Wait()
+
+}
+
+// request setu, fetch and store them into repo
+func (ss *SetuService) fetchSetu(num int, r18 bool, keyword string) error {
+	ss.setureqs <- &upstream.Options{Num: num, IsR18: r18, Keyword: keyword}
 
 	return nil
 
