@@ -6,10 +6,15 @@ service SetuService {
     rpc GetInventory (InventoryReq) returns (InventoryResp) {};
     rpc Fetch(FetchReq) returns (FetchResp) {}; 
     rpc GetSetuById(SetuReq) returns (stream SetuResp) {};
+    rpc Random(RandomReq) returns (stream SetuResp) {}
 }
 
 message SetuReq {
     int64 id = 1;
+}
+
+message RandomReq {
+    bool R18 = 1;
 }
 
 message SetuResp {
