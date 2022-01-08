@@ -44,8 +44,9 @@ func NewSetuRepo(t cacher.StoreType, dsn string) *SetuRepo {
 	}
 
 	return &SetuRepo{
-		cache: cache,
-		db:    newSetuSqlDB(dsn),
+		cache:  cache,
+		db:     newSetuSqlDB(dsn),
+		logger: logrus.StandardLogger().WithField("module", "setu_repo"),
 	}
 }
 
