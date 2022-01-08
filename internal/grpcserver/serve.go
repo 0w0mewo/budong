@@ -133,6 +133,15 @@ func (sgs *SetuGrpcServer) GetSetuById(req *setupb.SetuReq, stream setupb.SetuSe
 	return writeToStream(img, stream, sgs.chunkSize)
 }
 
+func (sgs *SetuGrpcServer) Random(req *setupb.RandomReq, stream setupb.SetuService_RandomServer) error {
+	imgId, err := sgs.serve.RandomSetu()
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	return sgs.GetSetuById(&setupb.SetuReq{Id: int64(imgId)}, stream) // service is same as GetSetuById
+}
+
 // convert SetuInfo slice to gRPC InventoryResp
 func setuInfosToInventory(setus []*shetu.SetuInfo) *setupb.InventoryResp {
 	ret := &setupb.InventoryResp{

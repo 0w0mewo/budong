@@ -20,7 +20,7 @@ type Service interface {
 	RequestSetu(num int, isR18 bool) error
 	GetSetuFromDB(id int) (io.Reader, error)
 	GetInventory(page, pageLimit uint64) ([]*shetu.SetuInfo, error)
-	RandomSetu() ([]byte, error)
+	RandomSetu() (int, error)
 	Count() uint64
 	Shutdown()
 }
@@ -61,14 +61,9 @@ func (ss *SetuService) RequestSetu(num int, isR18 bool) error {
 
 }
 
-// randomly select setu
-func (ss *SetuService) RandomSetu() ([]byte, error) {
-	id, err := ss.store.Random()
-	if err != nil {
-		return nil, err
-	}
-
-	return ss.store.GetById(id)
+// randomly select setu id
+func (ss *SetuService) RandomSetu() (int, error) {
+	return ss.store.Random()
 }
 
 // get setu image bytes by id
