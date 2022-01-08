@@ -124,6 +124,12 @@ func (sgs *SetuGrpcServer) GetInventory(ctx context.Context,
 
 }
 
+func (sgs *SetuGrpcServer) Count(ctx context.Context, req *setupb.CountReq) (*setupb.CountResp, error) {
+	cnt := sgs.serve.Count()
+
+	return &setupb.CountResp{Cnt: int64(cnt)}, nil
+}
+
 func (sgs *SetuGrpcServer) GetSetuById(req *setupb.SetuReq, stream setupb.SetuService_GetSetuByIdServer) error {
 	img, err := sgs.serve.GetSetuFromDB(int(req.Id))
 	if err != nil {
