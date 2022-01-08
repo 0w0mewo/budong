@@ -22,6 +22,7 @@ type SetuServiceClient interface {
 	Fetch(ctx context.Context, in *FetchReq, opts ...grpc.CallOption) (*FetchResp, error)
 	GetSetuById(ctx context.Context, in *SetuReq, opts ...grpc.CallOption) (SetuService_GetSetuByIdClient, error)
 	Random(ctx context.Context, in *RandomReq, opts ...grpc.CallOption) (SetuService_RandomClient, error)
+	Count(ctx context.Context, in *CountReq, opts ...grpc.CallOption) (*CountResp, error)
 }
 
 type setuServiceClient struct {
@@ -114,6 +115,15 @@ func (x *setuServiceRandomClient) Recv() (*SetuResp, error) {
 	return m, nil
 }
 
+func (c *setuServiceClient) Count(ctx context.Context, in *CountReq, opts ...grpc.CallOption) (*CountResp, error) {
+	out := new(CountResp)
+	err := c.cc.Invoke(ctx, "/setu.SetuService/Count", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SetuServiceServer is the server API for SetuService service.
 // All implementations must embed UnimplementedSetuServiceServer
 // for forward compatibility
@@ -122,6 +132,7 @@ type SetuServiceServer interface {
 	Fetch(context.Context, *FetchReq) (*FetchResp, error)
 	GetSetuById(*SetuReq, SetuService_GetSetuByIdServer) error
 	Random(*RandomReq, SetuService_RandomServer) error
+	Count(context.Context, *CountReq) (*CountResp, error)
 	mustEmbedUnimplementedSetuServiceServer()
 }
 
@@ -140,6 +151,9 @@ func (UnimplementedSetuServiceServer) GetSetuById(*SetuReq, SetuService_GetSetuB
 }
 func (UnimplementedSetuServiceServer) Random(*RandomReq, SetuService_RandomServer) error {
 	return status.Errorf(codes.Unimplemented, "method Random not implemented")
+}
+func (UnimplementedSetuServiceServer) Count(context.Context, *CountReq) (*CountResp, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Count not implemented")
 }
 func (UnimplementedSetuServiceServer) mustEmbedUnimplementedSetuServiceServer() {}
 
@@ -232,6 +246,24 @@ func (x *setuServiceRandomServer) Send(m *SetuResp) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _SetuService_Count_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CountReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SetuServiceServer).Count(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/setu.SetuService/Count",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SetuServiceServer).Count(ctx, req.(*CountReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SetuService_ServiceDesc is the grpc.ServiceDesc for SetuService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -246,6 +278,10 @@ var SetuService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Fetch",
 			Handler:    _SetuService_Fetch_Handler,
+		},
+		{
+			MethodName: "Count",
+			Handler:    _SetuService_Count_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
