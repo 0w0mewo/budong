@@ -13,7 +13,7 @@ service SetuService {
 message CountReq {}
 
 message CountResp {
-    int64 cnt = 1;
+    uint64 cnt = 1;
 }
 
 message SetuReq {
