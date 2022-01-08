@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/0w0mewo/budong/internal/infrastructure/cacher"
-	"github.com/0w0mewo/budong/internal/infrastructure/persistent"
+	"github.com/0w0mewo/budong/internal/infrastructure/persistent/setu"
 	"github.com/0w0mewo/budong/pkg/domain/shetu"
 	"github.com/0w0mewo/budong/pkg/domain/upstream"
 
@@ -36,7 +36,7 @@ type SetuService struct {
 }
 
 func NewSetuService(dsn string) *SetuService {
-	db := persistent.NewSetuRepo(cacher.REDIS, dsn)
+	db := setu.NewSetuRepo(cacher.REDIS, dsn)
 
 	ss := &SetuService{
 		store:    db,
@@ -109,7 +109,7 @@ func (ss *SetuService) fetcher() {
 
 		err := ss.store.AddSetu(s)
 		if err != nil {
-			if err == persistent.ErrCacheHit || err == persistent.ErrExistInDB {
+			if err == setu.ErrCacheHit || err == setu.ErrExistInDB {
 				return
 			}
 			ss.logger.Errorln("add setu:", err)

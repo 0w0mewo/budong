@@ -1,4 +1,4 @@
-package persistent
+package setu
 
 import (
 	"strconv"
@@ -8,18 +8,26 @@ import (
 	"github.com/0w0mewo/budong/pkg/domain/shetu"
 
 	"github.com/sirupsen/logrus"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 var _ shetu.Repo = &SetuRepo{}
 
 type selectorFn func(v interface{}) ([]byte, error)
 
+type setuRepoProvider interface {
+	Create(setu *shetu.SetuInfo) (*shetu.Setu, error)
+	SelectById(id int) ([]byte, error)
+	SelectByTitle(title string) ([]byte, error)
+	GetAmount() uint64
+	ListInventory(offset uint64, limit uint64) ([]*shetu.SetuInfo, error)
+	SelectRandomId() (int, error)
+	IsInDB(id int) bool
+	Close() error
+}
+
 type SetuRepo struct {
 	cache  cacher.KVStore
-	db     *gorm.DB
+	db     setuRepoProvider
 	logger *logrus.Entry
 }
 
@@ -35,20 +43,9 @@ func NewSetuRepo(t cacher.StoreType, dsn string) *SetuRepo {
 		cache = cacher.NewRedisCache(config.GlobalConfig.RedisAddr())
 	}
 
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{
-		PrepareStmt: true,
-		Logger:      logger.Default.LogMode(logger.Silent),
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	db.AutoMigrate(&shetu.Setu{})
-
 	return &SetuRepo{
-		cache:  cache,
-		db:     db,
-		logger: logrus.StandardLogger().WithField("module", "setu_repo"),
+		cache: cache,
+		db:    newSetuSqlDB(dsn),
 	}
 }
 
@@ -73,21 +70,14 @@ func (sr *SetuRepo) AddSetu(setu *shetu.SetuInfo) error {
 	}
 
 	// or in DB
-	if sr.existDB(setu.Id) {
+	if sr.db.IsInDB(setu.Id) {
 		sr.logger.Infof("db hit when add setu: %d", setu.Id)
 		return ErrExistInDB
 	}
 
 	sr.logger.Infof("adding %d to DB", setu.Id)
 
-	// fetch it
-	newRow, err := shetu.SetuFromSetuInfo(setu, true)
-	if err != nil {
-		return err
-	}
-
-	// add to DB
-	err = sr.db.Model(&shetu.Setu{Id: setu.Id}).Create(newRow).Error
+	newRow, err := sr.db.Create(setu)
 	if err != nil {
 		return err
 	}
@@ -101,30 +91,11 @@ func (sr *SetuRepo) AddSetu(setu *shetu.SetuInfo) error {
 
 // list all
 func (sr *SetuRepo) PaginatedInventory(page uint64, pageLimit uint64) ([]*shetu.SetuInfo, error) {
-	var dbres []shetu.Setu
-
-	offset := (page - 1) * pageLimit
-	err := sr.db.Select("id", "title", "url", "uid", "is_r18").
-		Offset(int(offset)).Limit(int(pageLimit)).
-		Find(&dbres).Error
-	if err != nil {
-		return nil, err
-	}
-
-	res := make([]*shetu.SetuInfo, 0)
-	for _, dbr := range dbres {
-		res = append(res, shetu.SetuToSetuInfo(&dbr))
-	}
-
-	return res, err
-
+	return sr.db.ListInventory(page, pageLimit)
 }
 
 func (sr *SetuRepo) Count() uint64 {
-	var cnt int64
-	sr.db.Model(&shetu.Setu{}).Count(&cnt)
-
-	return uint64(cnt)
+	return sr.db.GetAmount()
 }
 
 func (sr *SetuRepo) GetBy(val interface{}, cacheKey string, selector selectorFn) ([]byte, error) {
@@ -150,28 +121,14 @@ func (sr *SetuRepo) GetBy(val interface{}, cacheKey string, selector selectorFn)
 
 // get setu image bytes from DB by id, return error if not found
 func (sr *SetuRepo) selectSetuById(id interface{}) ([]byte, error) {
-	cond := &shetu.Setu{Id: id.(int)}
-	table := sr.db.Model(cond)
-	res := table.First(cond)
+	return sr.db.SelectById(id.(int))
 
-	if res.RowsAffected == 0 {
-		return nil, ErrNotExistInDB
-	}
-
-	return cond.Data, nil
 }
 
 // get setu image bytes from DB by title, return error if not found
 func (sr *SetuRepo) selectSetuByTitle(title interface{}) ([]byte, error) {
-	cond := &shetu.Setu{Title: title.(string)}
-	table := sr.db.Model(cond)
-	res := table.First(cond)
+	return sr.db.SelectByTitle(title.(string))
 
-	if res.RowsAffected == 0 {
-		return nil, ErrNotExistInDB
-	}
-
-	return cond.Data, nil
 }
 
 // whether a given setu id exist in cache
@@ -179,24 +136,12 @@ func (sr *SetuRepo) existCache(id int) bool {
 	return sr.cache.Exist(strconv.Itoa(id))
 }
 
-// whether a given setu id exist in DB
-func (sr *SetuRepo) existDB(id int) bool {
-	cond := &shetu.Setu{Id: id}
-	table := sr.db.Model(cond)
-	res := table.First(cond)
-
-	return res.RowsAffected != 0
-}
-
 func (sr *SetuRepo) Random() (int, error) {
-	res := &shetu.Setu{}
-	err := sr.db.Model(res).Select("id").Order("random()").First(res).Error
-
-	return res.Id, err
+	return sr.db.SelectRandomId()
 }
 
 func (sr *SetuRepo) Close() error {
-	err := sr.db.Commit().Error
+	err := sr.db.Close()
 	if err != nil {
 		return err
 	}
