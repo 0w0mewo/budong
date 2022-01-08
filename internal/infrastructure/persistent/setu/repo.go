@@ -5,6 +5,7 @@ import (
 
 	"github.com/0w0mewo/budong/config"
 	"github.com/0w0mewo/budong/internal/infrastructure/cacher"
+	"github.com/0w0mewo/budong/internal/infrastructure/persistent"
 	"github.com/0w0mewo/budong/pkg/domain/shetu"
 
 	"github.com/sirupsen/logrus"
@@ -31,10 +32,11 @@ type SetuRepo struct {
 	logger *logrus.Entry
 }
 
-func NewSetuRepo(t cacher.StoreType, dsn string) *SetuRepo {
+func NewSetuRepo(cacheProvider cacher.StoreType, repoProvider persistent.RepoProvider, dsn string) *SetuRepo {
 	var cache cacher.KVStore
+	var db setuRepoProvider
 
-	switch t {
+	switch cacheProvider {
 	case cacher.REDIS:
 		cache = cacher.NewRedisCache(config.GlobalConfig.RedisAddr())
 	case cacher.MEM:
@@ -43,9 +45,16 @@ func NewSetuRepo(t cacher.StoreType, dsn string) *SetuRepo {
 		cache = cacher.NewRedisCache(config.GlobalConfig.RedisAddr())
 	}
 
+	switch repoProvider {
+	case persistent.SQLITE:
+		db = newSetuSqlDB(dsn)
+	case persistent.MONGO:
+		db = newSetuMongoDB(dsn)
+	}
+
 	return &SetuRepo{
 		cache:  cache,
-		db:     newSetuSqlDB(dsn),
+		db:     db,
 		logger: logrus.StandardLogger().WithField("module", "setu_repo"),
 	}
 }

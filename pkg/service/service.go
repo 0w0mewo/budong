@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/0w0mewo/budong/internal/infrastructure/cacher"
+	"github.com/0w0mewo/budong/internal/infrastructure/persistent"
 	"github.com/0w0mewo/budong/internal/infrastructure/persistent/setu"
 	"github.com/0w0mewo/budong/pkg/domain/shetu"
 	"github.com/0w0mewo/budong/pkg/domain/upstream"
@@ -36,7 +37,7 @@ type SetuService struct {
 }
 
 func NewSetuService(dsn string) *SetuService {
-	db := setu.NewSetuRepo(cacher.REDIS, dsn)
+	db := setu.NewSetuRepo(cacher.REDIS, persistent.MONGO, dsn)
 
 	ss := &SetuService{
 		store:    db,
@@ -124,8 +125,8 @@ func (ss *SetuService) fetcher() {
 			setu, err := upstream.ReqSetuWithOption(ctx, http.DefaultClient, opt)
 			if err != nil {
 				ss.logger.Errorln(err)
-				cancel()
-				continue
+				goto END
+
 			}
 
 			ss.logger.Info("requested setu")
@@ -135,7 +136,7 @@ func (ss *SetuService) fetcher() {
 				go addFromSetuInfo(s)
 
 			}
-
+		END:
 			cancel()
 		}
 
