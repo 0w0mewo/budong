@@ -1,0 +1,4 @@
+[submodule "pkg/setupb"]
+	path = pkg/setupb
+	url = https://github.com/0w0mewo/budong.git
+	branch = protobuf
