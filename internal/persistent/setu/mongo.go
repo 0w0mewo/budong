@@ -1,6 +1,7 @@
 package setu
 
 import (
+	"bytes"
 	"context"
 	"math/rand"
 	"time"
@@ -8,15 +9,14 @@ import (
 	"github.com/0w0mewo/budong/pkg/domain/shetu"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/gridfs"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var _ setuRepoProvider = &setuMongoDB{}
 
-var stageNoImgBytes = bson.D{{"$project", bson.M{"data": 0}}}
-
 func listInvenPipeline(skip, limit int64) mongo.Pipeline {
-	return mongo.Pipeline{stageNoImgBytes, bson.D{{"$skip", skip}}, bson.D{{"$limit", limit}}}
+	return mongo.Pipeline{bson.D{{"$skip", skip}}, bson.D{{"$limit", limit}}}
 }
 
 func randSetuPipeline(n int64) mongo.Pipeline {
@@ -25,16 +25,15 @@ func randSetuPipeline(n int64) mongo.Pipeline {
 	}
 	i := rand.Int63n(n)
 
-	return mongo.Pipeline{stageNoImgBytes, bson.D{{"$skip", i}}, bson.D{{"$limit", 1}}}
+	return mongo.Pipeline{bson.D{{"$skip", i}}, bson.D{{"$limit", 1}}}
 
 }
 
-// var matchAll = bson.D{{"$match", bson.D{}}}
-
 type setuMongoDB struct {
-	client  *mongo.Client
-	table   *mongo.Collection
-	timeout time.Duration
+	client     *mongo.Client
+	setuMetas  *mongo.Collection
+	setuImages *gridfs.Bucket
+	timeout    time.Duration
 }
 
 func newSetuMongoDB(dsn string) *setuMongoDB {
@@ -52,17 +51,25 @@ func newSetuMongoDB(dsn string) *setuMongoDB {
 		panic(err)
 	}
 
-	// collection with index of image id
-	table := client.Database("setu-micro").Collection("setu")
-	table.Indexes().CreateOne(ctx, mongo.IndexModel{
+	db := client.Database("setu-micro")
+	// collection of setu metadata with index of image id
+	setuMetas := db.Collection("setu")
+	setuMetas.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.M{"id": -1},
 		Options: nil,
 	})
 
+	// collection of setu image bytes
+	setuImgs, err := gridfs.NewBucket(db)
+	if err != nil {
+		panic(err)
+	}
+
 	return &setuMongoDB{
-		client:  client,
-		table:   table,
-		timeout: 10 * time.Second,
+		client:     client,
+		setuMetas:  setuMetas,
+		timeout:    10 * time.Second,
+		setuImages: setuImgs,
 	}
 
 }
@@ -77,9 +84,19 @@ func (s *setuMongoDB) Create(setu *shetu.SetuInfo) (*shetu.Setu, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 
-	_, err = s.table.InsertOne(ctx, newRow)
+	// upload image bytes to gridFS
+	id, err := s.setuImages.UploadFromStream(newRow.Key(), bytes.NewReader(newRow.Data))
+	if err != nil {
+		return nil, err
+	}
 
-	return newRow, err
+	ret := newRow.Copy(true)
+
+	// Data field will store filed id instead of actual image bytes
+	newRow.Data, _ = id.MarshalText()
+	_, err = s.setuMetas.InsertOne(ctx, newRow)
+
+	return ret, err
 }
 
 func (s *setuMongoDB) SelectById(id int) ([]byte, error) {
@@ -88,16 +105,26 @@ func (s *setuMongoDB) SelectById(id int) ([]byte, error) {
 
 	res := &shetu.Setu{}
 	matchIdStage := bson.D{{"$match", bson.M{"id": id}}}
-	cur, err := s.table.Aggregate(ctx, mongo.Pipeline{matchIdStage})
+	cur, err := s.setuMetas.Aggregate(ctx, mongo.Pipeline{matchIdStage})
 	if err != nil {
 		return nil, err
 	}
 
-	// select one record only
+	// select one setu meta record only
 	cur.Next(ctx)
 	err = cur.Decode(res)
+	if err != nil {
+		return nil, err
+	}
 
-	return res.Data, err
+	// get the id from setu meta as filename and download it from gridFS
+	buf := bytes.NewBuffer(nil)
+	_, err = s.setuImages.DownloadToStreamByName(res.Key(), buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), err
 }
 
 func (s *setuMongoDB) SelectByTitle(title string) ([]byte, error) {
@@ -105,7 +132,7 @@ func (s *setuMongoDB) SelectByTitle(title string) ([]byte, error) {
 	defer cancel()
 
 	res := &shetu.Setu{}
-	err := s.table.FindOne(ctx, bson.M{"title": title}).Decode(res)
+	err := s.setuMetas.FindOne(ctx, bson.M{"title": title}).Decode(res)
 
 	return res.Data, err
 }
@@ -114,7 +141,7 @@ func (s *setuMongoDB) GetAmount() int64 {
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 
-	cnt, err := s.table.CountDocuments(ctx, bson.D{})
+	cnt, err := s.setuMetas.CountDocuments(ctx, bson.D{})
 	if err != nil {
 		return 0
 	}
@@ -127,7 +154,7 @@ func (s *setuMongoDB) ListInventory(offset int64, limit int64) ([]*shetu.SetuInf
 	defer cancel()
 
 	// paging result is excluded image bytes field
-	dbres, err := s.table.Aggregate(ctx, listInvenPipeline(offset, limit))
+	dbres, err := s.setuMetas.Aggregate(ctx, listInvenPipeline(offset, limit))
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +181,7 @@ func (s *setuMongoDB) SelectRandomId() (int, error) {
 	defer cancel()
 
 	// exclude image bytes field from result
-	cur, err := s.table.Aggregate(ctx, randSetuPipeline(s.GetAmount()))
+	cur, err := s.setuMetas.Aggregate(ctx, randSetuPipeline(s.GetAmount()))
 	if err != nil {
 		return -1, err
 	}
@@ -169,7 +196,7 @@ func (s *setuMongoDB) IsInDB(id int) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 
-	err := s.table.FindOne(ctx, bson.M{"id": id})
+	err := s.setuMetas.FindOne(ctx, bson.M{"id": id})
 
 	return err == nil
 }

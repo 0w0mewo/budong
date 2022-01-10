@@ -17,6 +17,31 @@ type Setu struct {
 	IsR18 bool   `bson:"is_r18"`
 	Data  []byte `bson:"data" gorm:"index"`
 }
+
+func (s *Setu) Key() string {
+	return strconv.Itoa(s.Id)
+}
+
+func (s *Setu) Copy(copyImg bool) *Setu {
+	setu := &Setu{
+		Id:    s.Id,
+		Title: s.Title,
+		Url:   s.Url,
+		Uid:   s.Uid,
+		IsR18: s.IsR18,
+	}
+
+	if copyImg {
+		data := make([]byte, len(s.Data))
+		copy(data, s.Data)
+		setu.Data = data
+
+		return setu
+	}
+
+	return setu
+}
+
 type SetuInfo struct {
 	Id    int               `json:"pid"`
 	Title string            `json:"title"`
