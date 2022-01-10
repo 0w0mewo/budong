@@ -1,6 +1,6 @@
 syntax = "proto3";
 package setu;
-option go_package = "github.com/0w0mewo/budong/pkg/setupb";
+option go_package = "setupb";
 
 service SetuService {
     rpc GetInventory (InventoryReq) returns (InventoryResp) {};
@@ -13,7 +13,7 @@ service SetuService {
 message CountReq {}
 
 message CountResp {
-    uint64 cnt = 1;
+    int64 cnt = 1;
 }
 
 message SetuReq {
@@ -34,8 +34,8 @@ message FetchReq {
 }
 
 message InventoryReq {
-    uint64 page = 1;
-    uint64 pageLimit = 2; 
+    int64 page = 1;
+    int64 pageLimit = 2; 
 }
 
 message FetchResp {
