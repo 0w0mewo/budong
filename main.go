@@ -9,9 +9,14 @@ import (
 )
 
 func main() {
+	cfg, err := config.LoadConfig("./config.yaml")
+	if err != nil {
+		panic(err)
+	}
+
 	var wg sync.WaitGroup
 
-	inst := grpcserver.NewSetuGrpcServer(config.GlobalConfig.Addr(), config.GlobalConfig.DB())
+	inst := grpcserver.NewSetuGrpcServer(cfg.ServiceAddr(), cfg.DSN(), cfg.RedisAddress())
 
 	wg.Add(1)
 	go func() {

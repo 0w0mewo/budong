@@ -27,7 +27,7 @@ type SetuGrpcServer struct {
 	chunkSize int
 }
 
-func NewSetuGrpcServer(addr, dsn string) *SetuGrpcServer {
+func NewSetuGrpcServer(addr, dsn, cacheDsn string) *SetuGrpcServer {
 	logger := logrus.StandardLogger().WithField("module", "grpc server")
 
 	listener, err := net.Listen("tcp", addr)
@@ -39,7 +39,7 @@ func NewSetuGrpcServer(addr, dsn string) *SetuGrpcServer {
 
 	ret := &SetuGrpcServer{
 		logger:    logger,
-		serve:     service.NewSetuService(dsn),
+		serve:     service.NewSetuService(dsn, cacheDsn),
 		listener:  listener,
 		server:    gserver,
 		chunkSize: 32 * 1024, // 32KiB

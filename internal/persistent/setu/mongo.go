@@ -62,7 +62,7 @@ func newSetuMongoDB(dsn string) *setuMongoDB {
 	return &setuMongoDB{
 		client:  client,
 		table:   table,
-		timeout: 3 * time.Second,
+		timeout: 10 * time.Second,
 	}
 
 }

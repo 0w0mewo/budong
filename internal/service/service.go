@@ -36,8 +36,8 @@ type SetuService struct {
 	setureqs chan *upstream.Options
 }
 
-func NewSetuService(dsn string) *SetuService {
-	db := setu.NewSetuRepo(cacher.REDIS, persistent.MONGO, dsn)
+func NewSetuService(dsn, cacheDsn string) *SetuService {
+	db := setu.NewSetuRepo(cacher.REDIS, persistent.MONGO, dsn, cacheDsn)
 
 	ss := &SetuService{
 		store:    db,

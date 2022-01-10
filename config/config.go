@@ -1,28 +1,46 @@
 package config
 
-var GlobalConfig *config
+import (
+	"os"
+	"path/filepath"
 
-func init() {
-	GlobalConfig = new(config)
-	GlobalConfig.redisAddr = "127.0.0.1:6379"
-	GlobalConfig.db = "mongodb://127.0.0.1:27017"
-	GlobalConfig.serverAddr = "127.0.0.1:9999"
+	"gopkg.in/yaml.v2"
+)
+
+type Config struct {
+	RedisAddr  string `yaml:"redis_addr"`
+	Db         string `yaml:"dsn"`
+	ServerAddr string `yaml:"local_grpc_addr"`
 }
 
-type config struct {
-	redisAddr  string
-	db         string
-	serverAddr string
+func (c *Config) RedisAddress() string {
+	return c.RedisAddr
 }
 
-func (c *config) RedisAddr() string {
-	return c.redisAddr
+func (c *Config) DSN() string {
+	return c.Db
 }
 
-func (c *config) DB() string {
-	return c.db
+func (c *Config) ServiceAddr() string {
+	return c.ServerAddr
 }
 
-func (c *config) Addr() string {
-	return c.serverAddr
+func LoadConfig(fpath string) (*Config, error) {
+	fpath, err := filepath.Abs(fpath)
+	if err != nil {
+		return nil, err
+	}
+
+	fd, err := os.Open(fpath)
+	if err != nil {
+		return nil, err
+	}
+	defer fd.Close()
+
+	res := &Config{}
+	err = yaml.NewDecoder(fd).Decode(res)
+
+	// log.Println(res.db, res.redisAddr, res.serverAddr)
+	return res, err
+
 }

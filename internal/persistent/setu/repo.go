@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/0w0mewo/budong/config"
 	"github.com/0w0mewo/budong/internal/persistent"
 	"github.com/0w0mewo/budong/pkg/cacher"
 	"github.com/0w0mewo/budong/pkg/domain/shetu"
@@ -38,13 +37,13 @@ type SetuRepo struct {
 	logger *logrus.Entry
 }
 
-func NewSetuRepo(cacheProvider cacher.StoreType, repoProvider persistent.RepoProvider, dsn string) *SetuRepo {
+func NewSetuRepo(cacheProvider cacher.StoreType, repoProvider persistent.RepoProvider, dsn string, cacheDsn string) *SetuRepo {
 	var cache cacher.KVStore
 	var db setuRepoProvider
 
 	switch cacheProvider {
 	case cacher.REDIS:
-		cache = cacher.NewRedisCache(config.GlobalConfig.RedisAddr())
+		cache = cacher.NewRedisCache(cacheDsn)
 	case cacher.MEM:
 		cache = cacher.NewInMemStore()
 	}
