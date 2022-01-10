@@ -72,7 +72,7 @@ func (s *setuSqlDB) SelectByTitle(title string) ([]byte, error) {
 	return cond.Data, nil
 }
 
-func (s *setuSqlDB) ListInventory(page uint64, pageLimit uint64) ([]*shetu.SetuInfo, error) {
+func (s *setuSqlDB) ListInventory(page int64, pageLimit int64) ([]*shetu.SetuInfo, error) {
 	var dbres []shetu.Setu
 
 	offset := (page - 1) * pageLimit
@@ -92,11 +92,11 @@ func (s *setuSqlDB) ListInventory(page uint64, pageLimit uint64) ([]*shetu.SetuI
 
 }
 
-func (s *setuSqlDB) GetAmount() uint64 {
+func (s *setuSqlDB) GetAmount() int64 {
 	var cnt int64
 	s.db.Model(&shetu.Setu{}).Count(&cnt)
 
-	return uint64(cnt)
+	return cnt
 }
 
 func (s *setuSqlDB) SelectRandomId() (int, error) {

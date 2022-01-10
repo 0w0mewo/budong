@@ -5,8 +5,8 @@ import (
 	"io"
 	"net"
 
+	"github.com/0w0mewo/budong/internal/service"
 	"github.com/0w0mewo/budong/pkg/domain/shetu"
-	"github.com/0w0mewo/budong/pkg/service"
 	"github.com/0w0mewo/budong/pkg/setupb"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -146,6 +146,7 @@ func (sgs *SetuGrpcServer) Random(req *setupb.RandomReq, stream setupb.SetuServi
 	}
 
 	return sgs.GetSetuById(&setupb.SetuReq{Id: int64(imgId)}, stream) // service is same as GetSetuById
+
 }
 
 // convert SetuInfo slice to gRPC InventoryResp

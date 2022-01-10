@@ -10,12 +10,12 @@ import (
 
 // setu data model in DB view
 type Setu struct {
-	Id    int    `gorm:"primaryKey"`
-	Title string `gorm:"index"`
+	Id    int `gorm:"primaryKey"`
+	Title string
 	Url   string
 	Uid   int
-	IsR18 bool
-	Data  []byte
+	IsR18 bool   `bson:"is_r18"`
+	Data  []byte `bson:"data" gorm:"index"`
 }
 type SetuInfo struct {
 	Id    int               `json:"pid"`

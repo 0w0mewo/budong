@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/0w0mewo/budong/config"
-	"github.com/0w0mewo/budong/internal/grpcserver"
+	"github.com/0w0mewo/budong/internal/service/grpcserver"
 	"github.com/0w0mewo/budong/utils"
 )
 

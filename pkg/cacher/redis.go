@@ -52,6 +52,9 @@ func (rc *RedisStore) Get(key string, missDo func(key string) ([]byte, error)) (
 
 	if rc.Exist(key) {
 		redisLogger.Infof("cache hit: %s", key)
+
+		// renew TTL and get the key
+		rc.rdb.Expire(ctx, key, time.Hour)
 		return rc.rdb.Get(ctx, key).Bytes()
 	}
 

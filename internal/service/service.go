@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0w0mewo/budong/internal/infrastructure/cacher"
-	"github.com/0w0mewo/budong/internal/infrastructure/persistent"
-	"github.com/0w0mewo/budong/internal/infrastructure/persistent/setu"
+	"github.com/0w0mewo/budong/internal/persistent"
+	"github.com/0w0mewo/budong/internal/persistent/setu"
+	"github.com/0w0mewo/budong/pkg/cacher"
 	"github.com/0w0mewo/budong/pkg/domain/shetu"
 	"github.com/0w0mewo/budong/pkg/domain/upstream"
 
@@ -20,9 +20,9 @@ import (
 type Service interface {
 	RequestSetu(num int, isR18 bool) error
 	GetSetuFromDB(id int) (io.Reader, error)
-	GetInventory(page, pageLimit uint64) ([]*shetu.SetuInfo, error)
+	GetInventory(page, pageLimit int64) ([]*shetu.SetuInfo, error)
 	RandomSetu() (int, error)
-	Count() uint64
+	Count() int64
 	Shutdown()
 }
 
@@ -79,7 +79,7 @@ func (ss *SetuService) GetSetuFromDB(id int) (io.Reader, error) {
 }
 
 // setu inventory info
-func (ss *SetuService) GetInventory(page, pageLimit uint64) ([]*shetu.SetuInfo, error) {
+func (ss *SetuService) GetInventory(page, pageLimit int64) ([]*shetu.SetuInfo, error) {
 	setus, err := ss.store.PaginatedInventory(page, pageLimit)
 	if err != nil {
 		ss.logger.Errorln(err)
@@ -90,8 +90,8 @@ func (ss *SetuService) GetInventory(page, pageLimit uint64) ([]*shetu.SetuInfo, 
 }
 
 // number of setu in inventory
-func (ss *SetuService) Count() uint64 {
-	return uint64(ss.store.Count())
+func (ss *SetuService) Count() int64 {
+	return ss.store.Count()
 }
 
 func (ss *SetuService) Shutdown() {

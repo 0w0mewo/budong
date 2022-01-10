@@ -1,15 +1,21 @@
 package setu
 
 import (
+	"math/rand"
 	"strconv"
+	"time"
 
 	"github.com/0w0mewo/budong/config"
-	"github.com/0w0mewo/budong/internal/infrastructure/cacher"
-	"github.com/0w0mewo/budong/internal/infrastructure/persistent"
+	"github.com/0w0mewo/budong/internal/persistent"
+	"github.com/0w0mewo/budong/pkg/cacher"
 	"github.com/0w0mewo/budong/pkg/domain/shetu"
 
 	"github.com/sirupsen/logrus"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 var _ shetu.Repo = &SetuRepo{}
 
@@ -19,8 +25,8 @@ type setuRepoProvider interface {
 	Create(setu *shetu.SetuInfo) (*shetu.Setu, error)
 	SelectById(id int) ([]byte, error)
 	SelectByTitle(title string) ([]byte, error)
-	GetAmount() uint64
-	ListInventory(offset uint64, limit uint64) ([]*shetu.SetuInfo, error)
+	GetAmount() int64
+	ListInventory(offset int64, limit int64) ([]*shetu.SetuInfo, error)
 	SelectRandomId() (int, error)
 	IsInDB(id int) bool
 	Close() error
@@ -41,8 +47,6 @@ func NewSetuRepo(cacheProvider cacher.StoreType, repoProvider persistent.RepoPro
 		cache = cacher.NewRedisCache(config.GlobalConfig.RedisAddr())
 	case cacher.MEM:
 		cache = cacher.NewInMemStore()
-	default:
-		cache = cacher.NewRedisCache(config.GlobalConfig.RedisAddr())
 	}
 
 	switch repoProvider {
@@ -100,11 +104,11 @@ func (sr *SetuRepo) AddSetu(setu *shetu.SetuInfo) error {
 }
 
 // list all
-func (sr *SetuRepo) PaginatedInventory(page uint64, pageLimit uint64) ([]*shetu.SetuInfo, error) {
+func (sr *SetuRepo) PaginatedInventory(page int64, pageLimit int64) ([]*shetu.SetuInfo, error) {
 	return sr.db.ListInventory(page, pageLimit)
 }
 
-func (sr *SetuRepo) Count() uint64 {
+func (sr *SetuRepo) Count() int64 {
 	return sr.db.GetAmount()
 }
 
@@ -117,6 +121,7 @@ func (sr *SetuRepo) GetBy(val interface{}, cacheKey string, selector selectorFn)
 			return nil, err
 		}
 
+		sr.cache.Add(key, b)
 		return b, nil
 	}
 

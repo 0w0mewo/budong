@@ -6,8 +6,8 @@ type Repo interface {
 	GetById(id int) ([]byte, error)
 	GetByTitle(title string) ([]byte, error)
 	AddSetu(setu *SetuInfo) error
-	PaginatedInventory(page uint64, pageLimit uint64) ([]*SetuInfo, error)
-	Count() uint64
+	PaginatedInventory(page int64, pageLimit int64) ([]*SetuInfo, error)
+	Count() int64
 	Random() (int, error)
 	Close() error
 }
