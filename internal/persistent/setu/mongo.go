@@ -52,6 +52,7 @@ func newSetuMongoDB(dsn string) *setuMongoDB {
 	}
 
 	db := client.Database("setu-micro")
+
 	// collection of setu metadata with index of image id
 	setuMetas := db.Collection("setu")
 	setuMetas.Indexes().CreateOne(ctx, mongo.IndexModel{
@@ -92,7 +93,7 @@ func (s *setuMongoDB) Create(setu *shetu.SetuInfo) (*shetu.Setu, error) {
 
 	ret := newRow.Copy(true)
 
-	// Data field will store filed id instead of actual image bytes
+	// Data field will store file id instead of actual image bytes
 	newRow.Data, _ = id.MarshalText()
 	_, err = s.setuMetas.InsertOne(ctx, newRow)
 
@@ -100,11 +101,19 @@ func (s *setuMongoDB) Create(setu *shetu.SetuInfo) (*shetu.Setu, error) {
 }
 
 func (s *setuMongoDB) SelectById(id int) ([]byte, error) {
+	return s.Match(bson.M{"id": id})
+}
+
+func (s *setuMongoDB) SelectByTitle(title string) ([]byte, error) {
+	return s.Match(bson.M{"title": title})
+}
+
+func (s *setuMongoDB) Match(matcher interface{}) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 
 	res := &shetu.Setu{}
-	matchIdStage := bson.D{{"$match", bson.M{"id": id}}}
+	matchIdStage := bson.D{{"$match", matcher}}
 	cur, err := s.setuMetas.Aggregate(ctx, mongo.Pipeline{matchIdStage})
 	if err != nil {
 		return nil, err
@@ -125,16 +134,6 @@ func (s *setuMongoDB) SelectById(id int) ([]byte, error) {
 	}
 
 	return buf.Bytes(), err
-}
-
-func (s *setuMongoDB) SelectByTitle(title string) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
-	defer cancel()
-
-	res := &shetu.Setu{}
-	err := s.setuMetas.FindOne(ctx, bson.M{"title": title}).Decode(res)
-
-	return res.Data, err
 }
 
 func (s *setuMongoDB) GetAmount() int64 {
@@ -166,7 +165,7 @@ func (s *setuMongoDB) ListInventory(offset int64, limit int64) ([]*shetu.SetuInf
 		return nil, err
 	}
 
-	ret := make([]*shetu.SetuInfo, 0)
+	ret := make([]*shetu.SetuInfo, 0, len(res))
 	for _, r := range res {
 		ret = append(ret, shetu.SetuToSetuInfo(r))
 	}

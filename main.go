@@ -9,10 +9,7 @@ import (
 )
 
 func main() {
-	cfg, err := config.LoadConfig("./config.yaml")
-	if err != nil {
-		panic(err)
-	}
+	cfg := config.LoadConfig()
 
 	var wg sync.WaitGroup
 
